@@ -1,0 +1,1003 @@
+import "dotenv/config";
+import { PrismaClient } from "@prisma/client";
+import { resolveDatabaseUrl } from "../src/lib/db-url";
+
+const prisma = new PrismaClient({ datasourceUrl: resolveDatabaseUrl() });
+
+// Cada carrera acá abajo corresponde a UNA carrera representativa por cada
+// una de las 17 facultades de la UNLP, con su plan de estudios OFICIAL
+// (verificado contra el sitio o PDF de cada facultad, dominio *.unlp.edu.ar).
+// Se excluyen los espacios "a elección" sin nombre fijo (ej. "Optativa",
+// "Asignatura Electiva I/II", menús de idioma) para no inventar contenido;
+// se incluyen en cambio los seminarios/materias optativas que sí tienen
+// nombre propio en el plan oficial.
+
+// Facultad de Ciencias Médicas
+// Fuente: https://www.med.unlp.edu.ar/index.php/carreras/medicina/plan-de-estudio
+const MEDICINA_SUBJECTS = [
+  // Primer año
+  "Anatomía",
+  "Biología",
+  "Ciencias Sociales y Medicina",
+  "Citología, Histología y Embriología",
+  "Informática Básica",
+  "Ciencias Exactas",
+  "Seminario en Investigación Científica",
+  // Segundo año
+  "Bioquímica y Biología Molecular",
+  "Epidemiología",
+  "Fisiología y Física Biológica",
+  "Psicología Médica",
+  "Ecología Humana y Promoción de la Salud",
+  "Historia de la Medicina",
+  // Tercer año
+  "Farmacología Básica",
+  "Informática Médica",
+  "Microbiología y Parasitología",
+  "Patología",
+  "Salud y Medicina Comunitaria",
+  "Semiología",
+  "Inglés Médico",
+  "Genética",
+  "Inmunología",
+  "Salud Ambiental",
+  "Estadística Aplicada a Ciencias de la Salud",
+  "Neuroanatomía Semiológica",
+  // Cuarto año
+  "Cirugía I",
+  "Dermatología",
+  "Diagnóstico y Terapéutica por Imágenes Módulo 1",
+  "Farmacología Aplicada",
+  "Infectología",
+  "Medicina Interna I",
+  "Neurología",
+  "Oftalmología",
+  "Ortopedia y Traumatología",
+  "Otorrinolaringología",
+  "Psiquiatría Módulo 1",
+  "Salud Pública Módulo 1",
+  "Urología",
+  "Bioquímica Clínica I",
+  "Filosofía Médica",
+  "Nutrición Clínica",
+  // Quinto año
+  "Cirugía II",
+  "Deontología y Medicina Legal",
+  "Diagnóstico y Terapéutica por Imágenes Módulo 2",
+  "Ginecología",
+  "Medicina Interna II",
+  "Obstetricia",
+  "Pediatría",
+  "Psiquiatría Módulo 2",
+  "Salud Pública Módulo 2",
+  "Terapia Intensiva",
+  "Toxicología",
+  "Bioética",
+  "Bioquímica Clínica II",
+  "Cirugía de Tórax",
+  "Discapacidad Intelectual",
+  "Trasplante de Órganos",
+  "Calidad de la Atención Médica",
+  "El paciente con enfermedad crónica de alto impacto familiar",
+  "Enfermedades poco frecuentes en medicina",
+  // Sexto año
+  "Práctica Final Obligatoria",
+];
+
+// Facultad de Ciencias Agrarias y Forestales — Ingeniería Agronómica
+// Fuente: https://web-dev.agro.unlp.edu.ar/wp-content/uploads/2025/05/plan_de_estudios_ingenieria_agronomica_ingreso2025.pdf
+const AGRONOMIA_SUBJECTS = [
+  "Introducción a las Ciencias Agrarias y Forestales",
+  "Biología General",
+  "Matemática 1",
+  "Química General",
+  "Química Orgánica Aplicada",
+  "Botánica Agrícola y Forestal",
+  "Matemática 2",
+  "Física Aplicada 1",
+  "Física Aplicada 2",
+  "Cálculo Estadístico y Biometría",
+  "Informática",
+  "Inglés",
+  "Análisis Químico",
+  "Topografía y Geomática",
+  "Introducción a la Producción Animal",
+  "Microbiología Agrícola",
+  "Agroclimatología y Bioclimatología",
+  "Bioquímica y Fitoquímica",
+  "Sociología Rural",
+  "Mecánica Aplicada",
+  "Fisiología Vegetal",
+  "Edafología",
+  "Nutrición y Alimentación Animal",
+  "Genética",
+  "Economía Agroalimentaria",
+  "Fitopatología",
+  "Zoología Aplicada",
+  "Producción Apícola, Porcina y Avícola",
+  "Taller de Integración Curricular 1",
+  "Introducción al Mejoramiento Genético",
+  "Manejo y Conservación de Suelos",
+  "Mecanización Agraria",
+  "Dasonomía",
+  "Producción Bovina, de Carne y de Leche",
+  "Agroecología",
+  "Riego y Drenaje",
+  "Extensión Rural",
+  "Protección Vegetal",
+  "Horticultura",
+  "Forrajicultura",
+  "Cereales de Verano",
+  "Oleaginosas",
+  "Fruticultura",
+  "Cereales de Invierno",
+  "Agroindustrias",
+  "Administración Agraria",
+  "Planeamiento y Diseño del Paisaje",
+  "Taller de Integración Curricular 2",
+];
+
+// Facultad de Ciencias Veterinarias — Ciencias Veterinarias
+// Fuente: https://www.fcv.unlp.edu.ar/wp-content/uploads/2024/03/PLAN-DE-ESTUDIOS.pdf
+const VETERINARIA_SUBJECTS = [
+  "Bioquímica",
+  "Biofísica",
+  "Biología celular y del desarrollo",
+  "Embriología y anatomía sistemática",
+  "Bioestadística",
+  "Fisicoquímica aplicada a la fisiología veterinaria",
+  "Microbiología I",
+  "Histología",
+  "Fisiología",
+  "Inmunobiología animal básica",
+  "Anatomía veterinaria",
+  "Economía general y sociología",
+  "Microbiología II",
+  "Parasitología",
+  "Patología General",
+  "Epidemiología y Salud Pública Básica",
+  "Zootecnia general",
+  "Nutrición animal y alimentos",
+  "Patología especial",
+  "Farmacología general",
+  "Genética general",
+  "Genética de poblaciones y mejoramiento animal",
+  "Semiología",
+  "Farmacología especial y toxicología",
+  "Inglés técnico",
+  "Producción de aves y pilíferos",
+  "Producción de bovinos de carne",
+  "Infectología, zoonosis y enfermedades exóticas y emergentes",
+  "Cirugía general I",
+  "Epidemiología y salud pública aplicada",
+  "Producción porcina",
+  "Producción de bovinos de leche",
+  "Producción equina",
+  "Producción ovina y caprina",
+  "Enfermedades de rumiantes y cerdos",
+  "Gestión de empresas y economía agraria",
+  "Tecnología aplicada a los productos alimenticios",
+  "Teriogenología",
+  "Enfermedades de caninos y felinos",
+  "Enfermedades de los equinos",
+  "Enfermedades de las aves y pilíferos",
+  "Bromatología, higiene e inspección de productos alimenticios",
+  "Análisis clínicos veterinarios",
+  "Métodos complementarios de diagnóstico",
+  "Inmunología animal aplicada",
+  "Biotecnología de la reproducción",
+  "Cirugía general II y anestesiología",
+  "Introducción a la Ciencia de animales de laboratorio",
+  "Clínica de caninos y felinos",
+  "Clínica y sanidad de los rumiantes",
+  "Clínica de equinos",
+  "Clínica y sanidad de los cerdos",
+  "Bienestar animal",
+  "Ética y legislación veterinaria",
+  "Práctica pre-profesional",
+];
+
+// Facultad de Ciencias Naturales y Museo — Licenciatura en Biología (orientación Ecología)
+// Fuente: https://www.fcnym.unlp.edu.ar/grado/carreras/licenciatura-en-biologia-orientacion-ecologia/plan-de-estudios-1980-modificado-2015/
+const BIOLOGIA_SUBJECTS = [
+  "Matemática",
+  "Química General",
+  "Zoología General",
+  "Introducción a la Botánica",
+  "Fundamentos de Geología",
+  "Química Orgánica",
+  "Estadística",
+  "Introducción a la Taxonomía",
+  "Física General",
+  "Morfología Vegetal",
+  "Ecología General",
+  "Botánica Sistemática I",
+  "Histología y Embriología Animal",
+  "Zoología Invertebrados I",
+  "Genética",
+  "Lógica y Metodología de las Ciencias",
+  "Zoología Invertebrados II (Artrópodos)",
+  "Zoología III (Vertebrados)",
+  "Botánica Sistemática II",
+  "Fisiología Vegetal",
+  "Ecología de Poblaciones",
+  "Biogeografía",
+  "Protección y Conservación de la Naturaleza",
+  "Ecología de Comunidades y Sistemas",
+  "Fisiología Animal",
+];
+
+// Facultad de Ciencias Astronómicas y Geofísicas — Astronomía
+// Fuente: https://www.fcaglp.unlp.edu.ar/index.php/alumnos/materias-y-programas/
+const ASTRONOMIA_SUBJECTS = [
+  "Análisis Matemático I",
+  "Álgebra",
+  "Astronomía General",
+  "Física General I",
+  "Física General II",
+  "Inglés I",
+  "Análisis Matemático II",
+  "Álgebra Lineal",
+  "Física General III",
+  "Computación",
+  "Física Moderna",
+  "Matemáticas Especiales I",
+  "Astronomía Esférica",
+  "Inglés II",
+  "Matemáticas Especiales II",
+  "Astronomía Estelar",
+  "Análisis Numérico I",
+  "Mecánica Analítica",
+  "Mecánica Celeste I",
+  "Estadística Aplicada",
+  "Sistemas Estelares",
+  "Elementos de Astrofísica Teórica",
+  "Seminario",
+  "Tesis de Licenciatura",
+];
+
+// Facultad de Arquitectura y Urbanismo — Arquitectura
+// Fuente: https://www.fau.unlp.edu.ar/web2018/wp-content/uploads/2025/02/Plan-de-Estudio-2024.pdf
+const ARQUITECTURA_SUBJECTS = [
+  "Arquitectura I",
+  "Teoría I",
+  "Arquitectura II",
+  "Teoría II",
+  "Arquitectura III",
+  "Arquitectura IV",
+  "Arquitectura V",
+  "Teorías Territoriales",
+  "Planificación Territorial I",
+  "Planificación Territorial II",
+  "Comunicación I",
+  "Sistema de Representación",
+  "Comunicación II",
+  "Comunicación III",
+  "Historia de la Arquitectura I",
+  "Historia de la Arquitectura II",
+  "Historia de la Arquitectura III",
+  "Elementos de Matemática y Física",
+  "Introducción a la Materialidad",
+  "Matemática Aplicada",
+  "Estructuras I",
+  "Procesos Constructivos I",
+  "Estructuras II",
+  "Procesos Constructivos II",
+  "Instalaciones I",
+  "Instalaciones II",
+  "Producción de Obras I",
+  "Estructuras III",
+  "Procesos Constructivos III",
+  "Producción de Obras II",
+  "Práctica Pre Profesional Asistida",
+  "PPO (Práctica y Producción de Obras)",
+  "Trabajo Final de Carrera",
+];
+
+// Facultad de Bellas Artes — Artes Plásticas (Lic./Prof. en Artes Visuales)
+// Fuente: https://www2.fba.unlp.edu.ar/artesvisuales/informacion-academica/plan-de-estudios/
+const ARTES_PLASTICAS_SUBJECTS = [
+  "Procedimientos de las artes plásticas",
+  "Lenguaje visual 1",
+  "Dibujo 1",
+  "Arte contemporáneo",
+  "Taller básico 1",
+  "Taller complementario 1",
+  "Taller complementario 2",
+  "Lenguaje visual 2",
+  "Dibujo 2",
+  "Historia de las artes visuales 1",
+  "Historia, política y cultura contemporáneas",
+  "Taller básico 2",
+  "Taller complementario 3",
+  "Taller complementario 4",
+  "Lenguaje visual 3",
+  "Dibujo 3",
+  "Historia de las artes visuales 2",
+  "Producción de textos A",
+  "Epistemología de las artes",
+  "Taller básico 3",
+  "Taller complementario 4 (Artes combinadas)",
+  "Taller complementario 5 (Fotografía e imagen digital)",
+  "Dibujo 4",
+  "Teoría del arte",
+  "Historia de las artes visuales 3",
+  "Metodología de la investigación",
+  "Fundamentos de la educación",
+  "Legislación y política cultural",
+  "Historia de las artes visuales 4",
+  "Didáctica especial y prácticas de la enseñanza",
+  "Taller de trabajo de graduación",
+];
+
+// Facultad de Ingeniería — Ingeniería Civil (Plan 2018)
+// Fuente: https://ing.unlp.edu.ar/wp-content/uploads/porftp/carreras/_pdf/civil_plan.pdf
+const INGENIERIA_SUBJECTS = [
+  "Matemática para Ingeniería (Nivelación)",
+  "Matemática A",
+  "Representación Gráfica",
+  "Introducción a la Ingeniería Civil e Hidráulica",
+  "Física I",
+  "Matemática B",
+  "Química",
+  "Estructuras I",
+  "Física II",
+  "Matemática C",
+  "Estructuras II",
+  "Hidráulica General I",
+  "Materiales I",
+  "Probabilidades y Estadística",
+  "Estructuras III",
+  "Hidráulica General II",
+  "Materiales II",
+  "Introducción a la Programación y Análisis Numérico",
+  "Estructuras IV",
+  "Topografía",
+  "Gestión Ambiental",
+  "Hidrología",
+  "Economía para Ingenieros",
+  "Actividades de Formación Complementaria I",
+  "Construcciones Metálicas y de Madera",
+  "Geotecnia I",
+  "Hormigón Armado I",
+  "Transportes",
+  "Planeamiento Regional y Urbano",
+  "Actividades de Formación Complementaria II",
+  "Edificios I",
+  "Geotecnia II",
+  "Obras Hidráulicas",
+  "Hormigón Armado II",
+  "Actividades de Formación Complementaria III",
+  "Ingeniería Legal",
+  "Caminos I",
+  "Edificios II",
+  "Evaluación de Proyectos y Organización de Obras",
+  "Ingeniería Sanitaria",
+  "Higiene y Seguridad en el Trabajo",
+  "Actividades de Formación Complementaria IV",
+  "Proyecto Final",
+  "Práctica Profesional Supervisada (Civil)",
+  "Complementos de Estructuras",
+  "Complementos de Transportes",
+  "Competencias Actitudinales, Sociales y Políticas",
+  "Actividades de Formación Complementaria V",
+  // Catálogo de optativas del plan
+  "Autopistas y Aeropuertos",
+  "Caminos II",
+  "Ejecución, Control y Mantenimiento de Obras de Hormigón",
+  "Geotecnia III",
+  "Materiales Viales Especiales",
+  "Proyecto Estructural",
+  "Puentes",
+  "Ferrocarriles",
+  "Estructuras V",
+  "Dirección Estratégica de Recursos Humanos",
+  "Gestión de Obras Civiles",
+  "Administración General y Sistemas Administrativos",
+  "Hidráulica Fluvial",
+  "Proyecto de Instalaciones Hidromecánicas",
+  "Puertos y Vías Navegables",
+  "Obras para el Control de Inundaciones",
+  "Proyectos de Estructuras Hidráulicas",
+  "Plan, Gestión y Aprovechamiento de los Recursos Hídricos",
+];
+
+// Facultad de Informática — Licenciatura en Informática
+// Fuente: https://www.info.unlp.edu.ar/wp-content/uploads/2023/09/Planes-de-estudios-Lic.-en-Informatica.pdf
+const INFORMATICA_SUBJECTS = [
+  "Conceptos de Algoritmos, Datos y Programas",
+  "Organización de Computadoras",
+  "Matemática 1",
+  "Taller de Programación",
+  "Arquitectura de Computadoras",
+  "Matemática 2",
+  "Fundamentos de Organización de Datos",
+  "Algoritmos y Estructuras de Datos",
+  "Seminario de Lenguajes",
+  "Diseño de Bases de Datos",
+  "Ingeniería de Software 1",
+  "Orientación a Objetos 1",
+  "Introducción a los Sistemas Operativos",
+  "Taller de lecto-comprensión y traducción en Inglés",
+  "Matemática 3",
+  "Ingeniería de Software 2",
+  "Conceptos y Paradigmas de Lenguajes de Programación",
+  "Orientación a Objetos 2",
+  "Redes y Comunicaciones",
+  "Programación Concurrente",
+  "Proyecto de Software",
+  "Computabilidad y Complejidad",
+  "Teoría de la Computación y Verificación de Programas",
+  "Sistemas Operativos",
+  "Sistemas Paralelos",
+  "Lógica e Inteligencia Artificial",
+  "Matemática 4",
+  "Laboratorio de Software",
+  "Programación Distribuida y Tiempo Real",
+  "Diseño de Experiencia de Usuario",
+  "Aspectos Sociales y Profesionales de Informática",
+  "Aspectos Éticos, Sociales y Profesionales Avanzados de Informática",
+  "Tesina de Licenciatura en Informática",
+];
+
+// Facultad de Ciencias Económicas — Contador Público (Plan VII)
+// Fuente: https://www.econo.unlp.edu.ar/contador_publico/plan_de_estudios_vigente__plan_vii-4612
+const CONTADOR_SUBJECTS = [
+  "Introducción a la Economía y Estructura Económica Argentina",
+  "Contabilidad I (Bases y Fundamentos)",
+  "Administración I (Introducción a la Administración y al Estudio de las Organizaciones)",
+  "Microeconomía I",
+  "Matemática I",
+  "Derecho Constitucional y Administrativo",
+  "Introducción a las Ciencias Sociales y al Conocimiento Científico",
+  "Contabilidad II (Ajuste y Valuación)",
+  "Macroeconomía I",
+  "Historia Económica y Social I",
+  "Administración II (Técnicas Administrativas y Gestión Organizacional)",
+  "Derecho Privado",
+  "Matemática II",
+  "Finanzas Públicas",
+  "Contabilidad III (Estados Contables)",
+  "Producción",
+  "Estadística Aplicada",
+  "Estructura Económica Societaria",
+  "Matemática para Decisiones Empresarias",
+  "Sistema de Información Contable de Apoyo a las Operaciones",
+  "Comercialización",
+  "Teoría y Técnica Impositiva I",
+  "Finanzas de Empresas",
+  "Contabilidad del Sector Público",
+  "Actuación Profesional Laboral y Previsional",
+  "Análisis e Interpretación de Estados Contables",
+  "Costos para la Gestión",
+  "Auditoría",
+  "Organización y Práctica Profesional",
+  "Actuación Profesional en la Justicia",
+  "Teoría y Técnica Impositiva II",
+  "Sistema de Información Contable para la Toma de Decisiones",
+  "Seminario",
+  "Práctica Profesional Supervisada",
+];
+
+// Facultad de Ciencias Jurídicas y Sociales — Abogacía (Plan de Estudio 6)
+// Fuente: https://www.jursoc.unlp.edu.ar/documentos/academica/2022/plan_estudio_6.pdf
+const ABOGACIA_SUBJECTS = [
+  "Introducción al Estudio de las Ciencias Sociales",
+  "Introducción al Derecho",
+  "Historia Constitucional",
+  "Introducción a la Sociología",
+  "Derecho Político",
+  "Introducción al Pensamiento Científico",
+  "Derecho Romano",
+  "Derecho Privado I - Civil",
+  "Derecho Privado II - Civil",
+  "Derecho Penal I",
+  "Derecho Constitucional",
+  "Derechos Humanos",
+  "Teoría del Conflicto",
+  "Derecho Privado III - Civil",
+  "Derecho Privado IV - Comercial",
+  "Derecho Procesal I",
+  "Economía Política",
+  "Derecho Público, Provincial y Municipal",
+  "Derecho Internacional Público",
+  "Derecho Penal II",
+  "Derecho Privado V - Civil",
+  "Derecho Privado VI - Comercial",
+  "Derecho Procesal II",
+  "Mediación y Medios de Resolución de Conflictos",
+  "Derecho Administrativo I",
+  "Derecho Social del Trabajo",
+  "Derecho Agrario",
+  "Filosofía del Derecho",
+  "Adaptaciones Profesionales Penales",
+  "Adaptaciones Profesionales Civiles",
+  "Derecho de Familia",
+  "Derecho Colectivo del Trabajo y Seguridad Social",
+  "Derecho de la Navegación",
+  "Derecho Administrativo II",
+  "Derecho de Minería y Energía",
+  "Sociología Jurídica",
+  "Derecho Internacional Privado",
+  "Derecho Notarial y Registral",
+  "Finanzas y Derecho Financiero",
+  "Derecho de las Sucesiones",
+  "Taller de lecto-comprensión en Idioma I",
+  "Taller de lecto-comprensión en Idioma II",
+  // Seminarios de orientación electiva (se cursan 3 de un área a elección)
+  "Arbitraje en Materia de Inversiones",
+  "Procedimiento del Recurso de Apelación ante el Tribunal Fiscal",
+  "Configuraciones del Estado Moderno",
+  "Derecho a la Integración Latinoamericana",
+  "Derecho Ambiental",
+  "Derecho de los Consumidores",
+  "Derecho a la Identidad y Registración",
+  "Procedimiento Arbitral en Materia Comercial",
+  "Pautas para el Análisis de la Jurisprudencia",
+];
+
+// Facultad de Humanidades y Ciencias de la Educación — Licenciatura en Ciencias de la Educación (Plan A2002)
+// Fuente: https://www.fahce.unlp.edu.ar/facultad/secretarias-y-prosecretarias/academica/deptos/ciencias-de-la-educacion/carreras/licenciatura-en-ciencias-de-la-educacion
+const CIENCIAS_EDUCACION_SUBJECTS = [
+  "Historia del Pensamiento Filosófico y Científico",
+  "Historia de la Educación General",
+  "Pedagogía I",
+  "Seminario Problemática Educativa Contemporánea",
+  "Psicología General",
+  "Antropología Social y Cultural",
+  "Didáctica",
+  "Historia de la Educación Argentina y Latinoamericana",
+  "Sociología de la Educación",
+  "Epistemología de las Ciencias Sociales",
+  "Psicología Evolutiva",
+  "Teoría y Desarrollo del Currículum",
+  "Fundamentos Biológicos de la Educación",
+  "Política y Legislación de la Educación",
+  "Pedagogía II",
+  "Psicología Educacional",
+  "Investigación Educativa I",
+  "Didáctica de la Lectura y la Escritura",
+  "Didáctica de la Matemática",
+  "Investigación Educativa II",
+  "Tecnología Educativa",
+  "Filosofía de la Educación",
+  "Seminario Orientación Educativa y Práctica Profesional",
+  "Evaluación Educativa",
+  "Administración de la Educación y las Instituciones Educativas",
+  "Capacitación en Informática",
+  // Formación orientada (las 3 orientaciones del 5º año)
+  "Prácticas Profesionales",
+  "Didáctica de las Ciencias Sociales",
+  "Tesina",
+  "Seminario Educación y Esfera Política",
+  "Seminario Currículum y Sociedad",
+  "Seminario Sociedad, Cultura y Educación",
+  "Formación Permanente de Educadores",
+  "Didáctica de las Ciencias Naturales",
+  "Seminario Orientación Psicopedagógica",
+  "Seminario de Investigación en Psicología Educacional",
+  "Pedagogía de la Diversidad",
+];
+
+// Facultad de Periodismo y Comunicación Social — Licenciatura en Comunicación Social (Plan 2017)
+// Fuente: https://perio.unlp.edu.ar/academica/carreras/licenciatura/
+const COMUNICACION_SOCIAL_SUBJECTS = [
+  "Taller de Introducción a la Comunicación Social",
+  "Modernidades, medios y poder",
+  "Comunicación, territorios y acción colectiva",
+  "Comunicación y Derechos Humanos",
+  "Introducción a los estudios de la comunicación",
+  "Taller integral de lenguajes y narrativas",
+  "Taller de escritura I",
+  "Laboratorio creativo de escritura I",
+  "Taller de análisis de la información",
+  "Introducción al pensamiento social y político contemporáneo",
+  "Historia de los procesos sociales y políticos de América Latina",
+  "Estudios de la comunicación en América Latina",
+  "Taller de planificación de políticas de comunicación",
+  "Taller de producción de contenidos y narrativas sonoras y radiales",
+  "Taller de escritura II",
+  "Taller de producción de contenidos y narrativas audiovisuales",
+  "Taller de producción de contenidos y narrativas digitales",
+  "Taller de producción de contenidos y narrativas gráficas",
+  "Laboratorio creativo de escritura II",
+  "Comunicación y Educación",
+  "Comunicación pública y política",
+  "Comunicación, cultura y poder",
+  "Seminario Interdisciplinario",
+  "Artes, vanguardias e industria cultural de masas",
+  "Debates intelectuales y pensamiento contemporáneo",
+  "Historia de los procesos sociales, culturales y políticos del siglo XX",
+  "Introducción a los estudios del lenguaje y los discursos",
+  "Taller de realización de proyectos gráficos",
+  "Taller de realización de proyectos sonoros y radiales",
+  "Taller de realización de proyectos audiovisuales",
+  "Historia de los procesos políticos y socioeconómicos de la Argentina contemporánea",
+  "Metodología de la investigación en comunicación social I",
+  "Problemas sociológicos",
+  "Antropología Social y Cultural",
+  "Comunicación y Subjetividad",
+  "Derecho a la comunicación",
+  "Políticas de comunicación y gestión de medios",
+  "Periodismo de investigación",
+  "Taller de estrategias de comunicación gráfica",
+  "Taller de estrategias de comunicación sonora y radial",
+  "Taller de estrategias de comunicación audiovisual",
+  "Historia del Periodismo",
+  "Metodologías cuantitativas",
+  "Metodologías de análisis del discurso",
+  "Metodologías cualitativas",
+  "Planificación y gestión de procesos comunicacionales",
+  "Taller de prácticas e intervenciones en organizaciones: abordajes organizacionales",
+  "Taller de prácticas e intervenciones en organizaciones: planificación de procesos",
+  "Taller de prácticas e intervenciones en organizaciones: economía social de las organizaciones",
+  "Producción de conocimiento en la intervención socio-comunitaria",
+  "Taller de producción de estrategias y productos comunicacionales",
+  "Comunicación mediática y organizaciones",
+  "Comunicación, estado y sociedad",
+  "Políticas, territorios y conflicto social",
+  // Optativas (pool común)
+  "Taller de teoría y práctica de la escritura periodística",
+  "Análisis y crítica de medios",
+  "Planificación comunicacional de campañas políticas",
+  "Comunicación, mercado e instituciones",
+  "Periodismo Institucional",
+  "Comunicación en organizaciones e instituciones",
+  "Gestión de la comunicación digital",
+  "Economía Política y Problemática Económica Argentina",
+  "Historia de las ideas y los procesos políticos",
+  "Relaciones internacionales y comunicación",
+  "Taller de Semiótica",
+  "Plataformas y soportes tecnológicos",
+  "Historia social de los medios",
+  "Problemas filosóficos contemporáneos",
+  "Taller permanente de tesis",
+  "Taller de Edición Técnica",
+  "Taller de Escritura Creativa",
+  "Comunicación y Recepción",
+  "Comunicación, géneros y discriminación",
+  "Derecho colectivo del trabajo",
+  "Lingüística y estudios del discurso",
+  "Estudios de Opinión Pública",
+  "Historia, cultura y tecnología",
+  "Taller de géneros periodísticos de la comunicación radiofónica",
+  "Estrategias de comunicación masiva",
+  "Trabajo Final Integrador",
+];
+
+// Facultad de Ciencias Exactas — Farmacia (Plan 2024)
+// Fuente: https://www.exactas.unlp.edu.ar/farmacia
+const FARMACIA_SUBJECTS = [
+  "Álgebra, Cálculo Numérico y Geometría Analítica",
+  "Análisis Matemático I",
+  "Introducción a la Química",
+  "Física I",
+  "Análisis Matemático II",
+  "Química General",
+  "Ámbitos de Ejercicio Farmacéutico I",
+  "Física II",
+  "Biología",
+  "Química Inorgánica",
+  "Análisis de Datos",
+  "Fisicoquímica",
+  "Química Orgánica I",
+  "Química Analítica",
+  "Ámbitos de Ejercicio Farmacéutico II",
+  "Inglés Científico Técnico",
+  "Química Orgánica II",
+  "Química Analítica Instrumental",
+  "Anatomía e Histología",
+  "Farmacobotánica",
+  "Farmacognosia",
+  "Química Biológica",
+  "Fisiología",
+  "Diseño de Experimentos",
+  "Ámbitos de Ejercicio Farmacéutico III",
+  "Fisiopatología",
+  "Microbiología General",
+  "Biofarmacia y Farmacocinética",
+  "Farmacología I",
+  "Nutrición y Bromatología",
+  "Tecnología Farmacéutica I",
+  "Inmunología General y Aplicada",
+  "Farmacología II",
+  "Higiene y Salud Pública",
+  "Química Medicinal",
+  "Biotecnología Farmacéutica",
+  "Tecnología Farmacéutica II",
+  "Control de Calidad de Medicamentos",
+  "Farmacia Clínica y Asistencial",
+  "Toxicología Farmacéutica",
+  "Economía y Legislación Farmacéutica",
+  "Práctica Farmacéutica",
+];
+
+// Facultad de Odontología — Odontología (Plan 1994, actualización 2016)
+// Fuente: https://www.folp.unlp.edu.ar/caratulacar/carrera/
+const ODONTOLOGIA_SUBJECTS = [
+  "Introducción a la Odontología",
+  "Odontología Preventiva y Social I",
+  "Anatomía I",
+  "Bioquímica Estomatología I",
+  "Biofísica I",
+  "Biología General I",
+  "Anatomía II",
+  "Histología y Embriología I",
+  "Biofísica II",
+  "Biología General II",
+  "Odontología Preventiva y Social II",
+  "Histología y Embriología II",
+  "Microbiología y Parasitología I",
+  "Biomateriales I",
+  "Dimensión Psicológica de la Atención Odontológica",
+  "Fisiología I",
+  "Fisiología II",
+  "Patología y Clínica Estomatológica I",
+  "Microbiología y Parasitología II",
+  "Bioquímica Estomatología II",
+  "Biomateriales II",
+  "Odontología Preventiva y Social III",
+  "Farmacología y Terapéutica I",
+  "Patología y Clínica Estomatológica II",
+  "Diagnóstico por Imágenes I",
+  "Operatoria Dental I A/B",
+  "Prótesis I A/B",
+  "Cirugía I A/B",
+  "Cirugía II A/B",
+  "Farmacología y Terapéutica II",
+  "Patología y Clínica Estomatológica III",
+  "Operatoria Dental II A/B",
+  "Prótesis II A/B",
+  "Diagnóstico por Imágenes II",
+  "Odontología Preventiva y Social IV",
+  "Periodoncia I A/B",
+  "Cirugía III A/B",
+  "Operatoria Dental III A/B",
+  "Prótesis III A/B",
+  "Patología y Clínica Estomatológica IV",
+  "Endodoncia I A/B",
+  "Endodoncia II A/B",
+  "Periodoncia II A/B",
+  "Cirugía IV A/B",
+  "Operatoria Dental IV A/B",
+  "Prótesis IV A/B",
+  "Patología y Clínica Estomatológica V",
+  "Odontología Preventiva y Social V",
+  "Odontología Integral Niños I A/B",
+  "Cirugía V A/B",
+  "Odontología Legal y Forense",
+  "Operatoria Dental V A/B",
+  "Prótesis V A/B",
+  "Odontología Integral Niños II A/B",
+  "Odontología Integral Niños III A/B",
+  "Cirugía VI A/B",
+  "Bioética",
+  "Operatoria Dental VI A/B",
+  "Prótesis VI A/B",
+  "P.P.S. (Prácticas Profesionales Supervisadas)",
+];
+
+// Facultad de Psicología — Licenciatura en Psicología (Plan 2012)
+// Fuente: https://wp-psico-admin.psico.unlp.edu.ar/wp-content/uploads/2025/03/Plan-Licenciatura-en-psicologia.pdf
+const PSICOLOGIA_SUBJECTS = [
+  "Psicología I",
+  "Antropología Cultural y Social",
+  "Lógica",
+  "Introducción a la Filosofía",
+  "Biología Humana",
+  "Psicología II",
+  "Teoría Psicoanalítica",
+  "Sociología General",
+  "Psicología Genética",
+  "Estadística Aplicada a la Psicología",
+  "Lingüística General",
+  "Neuroanatomía y Neurofisiología",
+  "Epistemología y Metodología de la Investigación Psicológica",
+  "Fundamentos, Técnicas e Instrumentos de la Exploración Psicológica I",
+  "Corrientes Actuales en Psicología",
+  "Psicología Evolutiva I",
+  "Psicología Evolutiva II",
+  "Psicología Social",
+  "Psicopatología I",
+  "Psicología Institucional",
+  "Seminario de Psicología Experimental",
+  "Psicopatología II",
+  "Fundamentos, Técnicas e Instrumentos de la Exploración Psicológica II",
+  "Psicodiagnóstico",
+  "Psicología Educacional",
+  "Psicoterapia I",
+  "Psicoterapia II",
+  "Psicología Preventiva",
+  "Taller de Producción Textual",
+  "Psicología Clínica de Niños y Adolescentes",
+  "Psicología Clínica de Adultos y Gerontes",
+  "Orientación Vocacional",
+  "Psicología Laboral",
+  "Psicología Forense",
+  "Trabajo Integrador Final",
+];
+
+// Facultad de Trabajo Social — Licenciatura en Trabajo Social (Plan 2015)
+// Fuente: https://trabajosocial.unlp.edu.ar/wp-content/uploads/2025/05/plan_de_estudio_de_licenciatura_en_trabajo_social_fts_unlp_2015.pdf
+const TRABAJO_SOCIAL_SUBJECTS = [
+  "Trabajo Social I",
+  "Historia Social de América Latina y Argentina",
+  "Introducción a la Teoría Social",
+  "Epistemología de las Ciencias Sociales",
+  "Configuración de Problemas Sociales",
+  "Introducción a la Filosofía",
+  "Trabajo Social II",
+  "Teoría Social",
+  "Investigación Social I",
+  "Teorías de la cultura y antropologías de las sociedades contemporáneas",
+  "Introducción a la Psicología",
+  "Teoría del Estado",
+  "Economía Política",
+  "Trabajo Social III",
+  "Conformación de la Estructura Social Argentina",
+  "Política Social",
+  "Trabajo Social y Sujetos Colectivos",
+  "Perspectivas antropológicas para la intervención social",
+  "Investigación Social II",
+  "Trabajo Social IV",
+  "Trabajo Social y análisis institucional",
+  "Psicología del desarrollo y la subjetividad",
+  "Teoría y práctica de la educación",
+  "Derecho de infancia, familia y cuestión penal",
+  "Salud Colectiva",
+  "Teoría del Derecho y Derecho Social",
+  "Trabajo Social V",
+  "Políticas Públicas: Planificación y Gestión",
+  "Filosofía Social",
+  "Debate contemporáneo en Trabajo Social",
+];
+
+// Viejos nombres genéricos que reemplazamos por los oficiales de arriba
+// (mapeo: slug viejo -> slug oficial nuevo, para migrar referencias existentes).
+const MEDICINA_SLUG_RENAMES: Record<string, string> = {
+  fisiologia: "fisiologia-y-fisica-biologica",
+  histologia: "citologia-histologia-y-embriologia",
+  bioquimica: "bioquimica-y-biologia-molecular",
+  farmacologia: "farmacologia-basica",
+};
+
+// Carreras "placeholder" de la primera versión de la plataforma, reemplazadas
+// por carreras reales (con sus slugs nuevos) más abajo.
+const OLD_PLACEHOLDER_CAREER_SLUGS = [
+  "economia",
+  "artes",
+  "ciencias-exactas",
+  "informatica",
+  "derecho",
+];
+
+const CARRERAS: Record<string, { name: string; subjects: string[] }> = {
+  medicina: { name: "Medicina", subjects: MEDICINA_SUBJECTS },
+  "ingenieria-agronomica": {
+    name: "Ingeniería Agronómica",
+    subjects: AGRONOMIA_SUBJECTS,
+  },
+  "ciencias-veterinarias": {
+    name: "Ciencias Veterinarias",
+    subjects: VETERINARIA_SUBJECTS,
+  },
+  biologia: { name: "Biología", subjects: BIOLOGIA_SUBJECTS },
+  astronomia: { name: "Astronomía", subjects: ASTRONOMIA_SUBJECTS },
+  arquitectura: { name: "Arquitectura", subjects: ARQUITECTURA_SUBJECTS },
+  "artes-plasticas": {
+    name: "Artes Plásticas",
+    subjects: ARTES_PLASTICAS_SUBJECTS,
+  },
+  "ingenieria-civil": {
+    name: "Ingeniería Civil",
+    subjects: INGENIERIA_SUBJECTS,
+  },
+  informatica: { name: "Informática", subjects: INFORMATICA_SUBJECTS },
+  "contador-publico": {
+    name: "Contador Público",
+    subjects: CONTADOR_SUBJECTS,
+  },
+  abogacia: { name: "Abogacía", subjects: ABOGACIA_SUBJECTS },
+  "ciencias-de-la-educacion": {
+    name: "Ciencias de la Educación",
+    subjects: CIENCIAS_EDUCACION_SUBJECTS,
+  },
+  "comunicacion-social": {
+    name: "Comunicación Social",
+    subjects: COMUNICACION_SOCIAL_SUBJECTS,
+  },
+  farmacia: { name: "Farmacia", subjects: FARMACIA_SUBJECTS },
+  odontologia: { name: "Odontología", subjects: ODONTOLOGIA_SUBJECTS },
+  psicologia: { name: "Psicología", subjects: PSICOLOGIA_SUBJECTS },
+  "trabajo-social": {
+    name: "Trabajo Social",
+    subjects: TRABAJO_SOCIAL_SUBJECTS,
+  },
+};
+
+function slugify(text: string) {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+async function main() {
+  // Las carreras placeholder no tienen referencias vivas (ningún usuario de
+  // prueba las usa), así que se pueden borrar de una: el cascade limpia sus
+  // materias viejas.
+  await prisma.career.deleteMany({
+    where: { slug: { in: OLD_PLACEHOLDER_CAREER_SLUGS } },
+  });
+
+  for (const [slug, { name, subjects }] of Object.entries(CARRERAS)) {
+    const career = await prisma.career.upsert({
+      where: { slug },
+      update: {},
+      create: { name, slug },
+    });
+
+    const subjectBySlug = new Map<string, string>(); // slug -> id
+
+    for (const subjectName of subjects) {
+      const subjectSlug = slugify(subjectName);
+      const created = await prisma.subject.upsert({
+        where: { careerId_slug: { careerId: career.id, slug: subjectSlug } },
+        update: {},
+        create: { name: subjectName, slug: subjectSlug, careerId: career.id },
+      });
+      subjectBySlug.set(subjectSlug, created.id);
+    }
+
+    if (slug === "medicina") {
+      for (const [oldSlug, newSlug] of Object.entries(MEDICINA_SLUG_RENAMES)) {
+        const oldSubject = await prisma.subject.findUnique({
+          where: { careerId_slug: { careerId: career.id, slug: oldSlug } },
+        });
+        const newSubjectId = subjectBySlug.get(newSlug);
+        if (!oldSubject || !newSubjectId) continue;
+
+        // Migramos las referencias existentes (tutores, solicitudes,
+        // materiales) del nombre viejo al oficial antes de borrarlo.
+        await prisma.tutorSubject
+          .updateMany({
+            where: { subjectId: oldSubject.id },
+            data: { subjectId: newSubjectId },
+          })
+          .catch(() => {
+            // si el tutor ya tenía también la materia nueva, ignoramos el
+            // conflicto de unicidad y de última nos quedamos con la vieja
+          });
+        await prisma.tutoringRequest.updateMany({
+          where: { subjectId: oldSubject.id },
+          data: { subjectId: newSubjectId },
+        });
+        await prisma.material.updateMany({
+          where: { subjectId: oldSubject.id },
+          data: { subjectId: newSubjectId },
+        });
+        await prisma.tutorSubject.deleteMany({ where: { subjectId: oldSubject.id } });
+        await prisma.subject.delete({ where: { id: oldSubject.id } });
+      }
+    }
+  }
+
+  const totalSubjects = Object.values(CARRERAS).reduce(
+    (sum, c) => sum + c.subjects.length,
+    0
+  );
+  console.log(
+    `Seed listo: ${Object.keys(CARRERAS).length} carreras (una por facultad de la UNLP) con ${totalSubjects} materias en total.`
+  );
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

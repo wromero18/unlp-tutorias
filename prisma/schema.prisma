@@ -1,0 +1,202 @@
+// Prisma schema — UNLP Tutorías
+// Nota: se usa SQLite para desarrollo local sin instalar nada extra.
+// Para producción, cambiar provider a "postgresql" y DATABASE_URL a la conexión real (ver README.md).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  TUTOR
+}
+
+enum SubscriptionStatus {
+  INACTIVE // nunca pagó / venció y no renovó
+  ACTIVE // al día con el pago mensual
+  CANCELED // canceló, sigue activo hasta expirar
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum MaterialKind {
+  PDF
+  ACTIVITY
+}
+
+model Career {
+  id        String   @id @default(cuid())
+  name      String   @unique // "Medicina", "Economía", "Artes", "Ciencias", ...
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  subjects        Subject[]
+  studentProfiles StudentProfile[]
+}
+
+// Materia dentro de una carrera (ej. "Anatomía" en Medicina)
+model Subject {
+  id       String @id @default(cuid())
+  name     String
+  slug     String
+  careerId String
+  career   Career @relation(fields: [careerId], references: [id], onDelete: Cascade)
+
+  tutors            TutorSubject[]
+  tutoringRequests  TutoringRequest[]
+  materials         Material[]
+
+  @@unique([careerId, slug])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String
+  name         String
+  role         Role
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tutorProfile   TutorProfile?
+  studentProfile StudentProfile?
+
+  tutoringRequests     TutoringRequest[] // solicitudes que este usuario hizo como alumno
+  reviews              Review[] // reseñas que este usuario dejó como alumno
+  assignedMaterials    Material[] // materiales que un tutor le asignó puntualmente
+  passwordResetTokens  PasswordResetToken[]
+}
+
+// Token para restablecer la contraseña por email. Se guarda el hash del
+// token (no el valor crudo, que solo va en el link del mail) para que una
+// fuga de la base no permita usarlo directamente.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model TutorProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio        String?
+  hourlyRate Float?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  subjects TutorSubject[]
+
+  subscriptionStatus    SubscriptionStatus @default(INACTIVE)
+  subscriptionExpiresAt DateTime?
+
+  // Integración con Google Calendar (ver src/lib/google-calendar.ts)
+  googleCalendarId          String? // por ahora siempre "primary"
+  googleAccountEmail        String?
+  googleRefreshToken        String?
+  googleCalendarConnectedAt DateTime?
+
+  // Opción simple: el tutor pega el link público de su Google Calendar y se
+  // muestra embebido (sin necesitar OAuth). Ver src/lib/google-calendar.ts.
+  calendarEmbedUrl String?
+
+  tutoringRequests TutoringRequest[]
+  reviews          Review[]
+  materials        Material[]
+}
+
+// Relación N:M entre tutor y materias que dicta
+model TutorSubject {
+  id        String       @id @default(cuid())
+  tutorId   String
+  tutor     TutorProfile @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([tutorId, subjectId])
+  @@index([subjectId])
+}
+
+model StudentProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  careerId  String?
+  career    Career?  @relation(fields: [careerId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+// Solicitud de un alumno a un tutor para una materia puntual
+model TutoringRequest {
+  id        String        @id @default(cuid())
+  studentId String
+  student   User          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  tutorId   String
+  tutor     TutorProfile  @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  subjectId String
+  subject   Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  status    RequestStatus @default(PENDING)
+  meetingLink String? // link de Zoom/Meet que el tutor carga para la clase
+  scheduledAt DateTime? // fecha y hora programada de la clase
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([studentId, tutorId, subjectId])
+  @@index([tutorId])
+}
+
+// Reseña de un alumno sobre un tutor. Solo puede dejarla un alumno que tuvo
+// al menos una tutoría aceptada con ese tutor (ver validación en la API).
+model Review {
+  id        String       @id @default(cuid())
+  studentId String
+  student   User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  tutorId   String
+  tutor     TutorProfile @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  rating    Int // 1 a 5
+  comment   String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([studentId, tutorId])
+  @@index([tutorId])
+}
+
+// Material que un tutor comparte: un PDF o una actividad (consigna de
+// texto). Si `studentId` está seteado, es solo para ese alumno; si no, es
+// general para todos los alumnos con una tutoría aceptada con ese tutor
+// (ver validación en la API).
+model Material {
+  id          String       @id @default(cuid())
+  tutorId     String
+  tutor       TutorProfile @relation(fields: [tutorId], references: [id], onDelete: Cascade)
+  subjectId   String?
+  subject     Subject?     @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  studentId   String? // si es null, es un material general para todos sus alumnos
+  student     User?        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  kind        MaterialKind
+  title       String
+  description String?
+  fileUrl     String? // solo para kind = PDF
+  fileName    String? // nombre original del archivo, solo para kind = PDF
+  createdAt   DateTime     @default(now())
+
+  @@index([tutorId])
+  @@index([studentId])
+}

@@ -39,3 +39,17 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/src/generated/prisma
+
+# Archivos subidos por los tutores (PDFs de materiales)
+/public/uploads/
+
+# Base de datos local de desarrollo (SQLite). No se versiona: cada quien
+# corre su propia copia (ver README para seedearla, o copiarla a mano al
+# migrar de máquina).
+/prisma/dev.db
+/prisma/dev.db-journal
+/prisma/dev.db-wal
+/prisma/dev.db-shm
+.claude/scheduled_tasks.lock
