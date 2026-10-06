@@ -18,6 +18,32 @@ npm run dev
 
 Abrir http://localhost:3000
 
+## Cómo usar la plataforma
+
+Una vez corriendo (ver arriba) y con `http://localhost:3000` abierto, así se usa de punta a punta. Este repositorio **no trae cuentas de prueba cargadas** (la base de datos no se sube a GitHub) — lo primero es registrar tu propia cuenta de alumno y, si querés probar el otro lado, otra de tutor (podés usar dos navegadores, o uno en modo incógnito, para estar logueado con las dos al mismo tiempo).
+
+### Como alumno
+
+1. Entrá a **Registrarme**, elegí **"Soy alumno"**, completá tus datos y elegí tu carrera.
+2. Iniciá sesión. En **"Mi panel"** vas a ver un botón **"Ver tutores"**.
+3. En **Tutores**, elegí primero tu carrera y después la materia puntual en la que necesitás ayuda.
+4. Te van a aparecer los tutores que dictan esa materia (con suscripción activa), con su calificación, su calendario de disponibilidad, y el botón **"Solicitar tutoría"**.
+5. Una vez que pedís la tutoría, el tutor la va a aceptar o rechazar desde su panel. Podés ver el estado en **"Mi panel" → "Tus solicitudes"**.
+6. Cuando la acepta, el tutor carga el día/hora y el link de Zoom o Meet de la clase — ahí mismo te va a aparecer un botón **"Unirse a la clase"**.
+7. Desde la misma solicitud aceptada tenés un botón **"Ver materiales y dejar reseña"**: te lleva al perfil del tutor, donde vas a encontrar los PDFs/actividades que compartió y vas a poder calificarlo (1 a 5 estrellas) con un comentario una vez que terminó la tutoría.
+
+### Como tutor
+
+1. Entrá a **Registrarme**, elegí **"Soy tutor"**, completá tus datos, y marcá las materias en las que podés dar clases (podés elegir de varias carreras a la vez).
+2. Iniciá sesión y entrá a **"Mi panel"**.
+3. Activá tu suscripción con el botón de la demo (todavía no está conectada a un pago real — ver [Pendientes](#pendientes--próximos-pasos)). Sin esto, los alumnos no te van a encontrar en la búsqueda.
+4. Si querés sumar o sacar materias después, usá los desplegables de carrera → materia en **"Tus materias"**.
+5. Pegá el link público de tu Google Calendar (Configuración → Integrar calendario → "URL pública para este calendario") para que los alumnos vean tu disponibilidad antes de pedirte una clase.
+6. Cuando un alumno te pida una tutoría, te va a aparecer en **"Solicitudes pendientes"** — Aceptar o Rechazar.
+7. A cada alumno aceptado le podés cargar el link y la fecha/hora de la clase (Zoom/Meet) en **"Tus alumnos"**.
+8. Subí material de estudio (PDFs o actividades) para un alumno puntual o para todos tus alumnos, desde la sección **"Materiales"**.
+9. Tus reseñas y tu calificación promedio se van acumulando en **"Tus reseñas"**, visibles también en tu perfil público y en el directorio.
+
 ## Estructura funcional (MVP actual)
 
 - **Registro/login** de alumnos y tutores con usuario/email + contraseña ([src/app/register](src/app/register), [src/app/login](src/app/login)). Incluye "¿Olvidaste tu contraseña?" con reseteo por email (ver más abajo).
